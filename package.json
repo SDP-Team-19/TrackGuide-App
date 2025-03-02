@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@aws-sdk/client-kinesis-node": "^0.1.0-preview.2",
+    "aws-sdk": "^2.1692.0",
+    "http-server": "^14.1.1",
+    "ws": "^8.18.1"
+  }
+}
