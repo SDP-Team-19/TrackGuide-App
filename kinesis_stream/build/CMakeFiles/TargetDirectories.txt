@@ -1,0 +1,3 @@
+/home/cameron-cebula/Desktop/TrackGuide-App-trackguide-map/kinesis_stream/build/CMakeFiles/kinesis_stream.dir
+/home/cameron-cebula/Desktop/TrackGuide-App-trackguide-map/kinesis_stream/build/CMakeFiles/edit_cache.dir
+/home/cameron-cebula/Desktop/TrackGuide-App-trackguide-map/kinesis_stream/build/CMakeFiles/rebuild_cache.dir
