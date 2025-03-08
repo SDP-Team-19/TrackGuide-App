@@ -6,7 +6,6 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
-#include <sstream>
 
 using namespace Aws;
 using namespace Aws::Kinesis;
@@ -16,36 +15,85 @@ using namespace std;
 
 //in /build
 //cmake .. -DCMAKE_PREFIX_PATH=~/Desktop/TrackGuide-App-trackguide-map/aws-sdk-install
+int first = 0;
+//generate fake coords
+JsonValue generate_coordinates(double latitude, double longitude) {
+    if(first == 0){
+        double threshold = 0.00001;
+        Aws:String jsonString = R"({"mode":"replay"})";
+        JsonValue threshjson(jsonString);
+        threshjson.WithDouble("threshold", threshold);
+        first = first+1;
+        return threshjson;
+    }
+    first += 1;
 
+    if (first < 20){
+        latitude += 0.000005;
+    }
+    else if(first < 40) {
+        longitude -= 0.000005;
+    }
+    else if(first < 60){
+        latitude -= 0.000005;
+    }
+    else{
+        longitude +=0.000005;
+    }
 
-// Function to generate fake coordinates
-pair<double, double> generate_coordinates(double latitude, double longitude) {
-    latitude += 0.000001;
-    longitude += 0.000001;
-    return {latitude, longitude};
+    JsonValue json;
+    json.WithDouble("latitude", latitude);
+    json.WithDouble("longitude", longitude);
+    
+    return json;
 }
 
+//message one (on event[button change])
+// thresh, mode(record, play, bound reset, line reset)
+
+//continually send message 2
+//lat, long
+
+
 int main() {
+    JsonValue jsonPayload;
+
+    //Aws:String jsonString = R"({"longitude":12.2554, "latitude":32.421})";
+    //Aws:String jsonString = R"({"threshold": 12.3, "mode":"replay"})";
+
+    //JsonValue json(jsonString);
     Aws::SDKOptions options;
-    Aws::InitAPI(options);  // Initialize AWS SDK
+    Aws::InitAPI(options);  //init AWS SDK
 
-    {
-        KinesisClient kinesisClient;
+    KinesisClient kinesisClient;
 
-        string streamName = "CoordinatesStream";
-        double latitude = 37.7749;
-        double longitude = -122.4194;
+    string streamName = "CoordinatesStream";
+    double latitude = 42.393489;
+    double longitude = -72.529097;
 
-        while (true) {
-            //gen new coordinates
-            auto [new_lat, new_lng] = generate_coordinates(latitude, longitude);
-            latitude = new_lat;
-            longitude = new_lng;
+    while (true) {
+        //convert coords to JSON
+         //gen new coordinates
+        JsonValue jsonResult = generate_coordinates(latitude, longitude);
+        Aws::String jsonString = jsonResult.View().WriteReadable();
 
-            //convert coords to JSON
-            JsonValue jsonPayload;
-            jsonPayload.WithString("latitude", to_string(latitude));
-            jsonPayload.WithString("longitude", to_string(longitude));
+
+        if (jsonResult.WasParseSuccessful()){
+            JsonView jsonView = jsonResult.View();
+
+            if (jsonView.ValueExists("threshold")){
+                jsonPayload = JsonValue(); //clear payload
+                jsonPayload.WithString("threshold", to_string(jsonView.GetDouble("threshold")));
+                jsonPayload.WithString("mode", jsonView.GetString("mode"));
+            }
+            else{
+                jsonPayload = JsonValue(); //clear payload
+                jsonPayload.WithString("latitude", to_string(jsonView.GetDouble("latitude")));
+                jsonPayload.WithString("longitude", to_string(jsonView.GetDouble("longitude")));
+
+                latitude = jsonView.GetDouble("latitude");
+                longitude = jsonView.GetDouble("longitude");
+            }
 
             Aws::String jsonStr = jsonPayload.View().WriteCompact();
 
@@ -58,12 +106,14 @@ int main() {
             //send data to kinesis
             auto outcome = kinesisClient.PutRecord(request);
 
+
             if (outcome.IsSuccess()) {
                 cout << "Sent: " << jsonStr << endl;
             }
-            //this_thread::sleep_for(chrono::seconds(2));  // Wait 2 seconds
         }
+        this_thread::sleep_for(chrono::seconds(1));  // Wait 2 seconds
     }
+    
 
     return 0;
 }
