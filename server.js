@@ -8,7 +8,7 @@
 
 // #### modules I needed to install for it work ####
 //          npm install aws-sdk
-//          npm install @aws-sdk/client-kinesis-node 
+//          npm install @aws-sdk/client-kinesis-node
 //          npm install ws
 //          pip install boto3, for python file stream.py
 
@@ -55,6 +55,17 @@ function forwardToFront(latitude, longitude) {
     });
 }
 
+function threshToFront(threshold, mode) {
+    //function sends coordinates to front end
+
+    const message = JSON.stringify({ threshold, mode });
+    clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+}
+
 
 async function getShardIterator() {
     //connects to kinesis stream
@@ -82,17 +93,22 @@ async function readFromStream() {
         //reads data, prints data, then sends to front-end
         response.Records.forEach((record) => {
             const data = JSON.parse(Buffer.from(record.Data, "base64").toString());
-            console.log("Received from Kinesis:", data);
-            forwardToFront(data.latitude, data.longitude);
+            if("threshold" in data){
+                console.log("Received from Kinesis:", data);
+                threshToFront(data.threshold, data.mode);
+            }
+            else{
+                console.log("Received from Kinesis:", data);
+                forwardToFront(data.latitude, data.longitude);
+            }
         });
 
         //update to next datapoint
         shardIterator = response.NextShardIterator;
 
         //wait one second then accept next coord
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        //await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 }
 
-// start reading stream
-readFromStream().catch(console.error);
+readFromStream().catch(console.error); // run program
