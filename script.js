@@ -12,6 +12,7 @@
 let pathCoordinates = [];
 let leftCoordinates = [];
 let rightCoordinates = [];
+let oldCoordinates = [];
 
 
 //init for map
@@ -70,15 +71,40 @@ socket.onmessage = function (event) {
   if(message.hasOwnProperty("threshold")){
       threshold = message.threshold;
       mode = message.mode;
+
+      if(mode ==  "bound_reset"){
+        leftCoordinates = [];
+        rightCoordinates = [];
+      }
+      if(mode == "line_reset"){
+        oldCoordinates = pathCoordinates.slice(); 
+        pathCoordinates = [];
+      }
+
+      if (mode == "replay"){
+        if (oldCoordinates.length === 0){
+          oldCoordinates = pathCoordinates.slice();
+        }
+        for(let i = 0; i < oldCoordinates.length; i++){
+          pathCoordinates.push(oldCoordinates[i]);
+        }
+      }
+
       //console.log("Received from Threshold:", message.threshold);
       //console.log("Received from Threshold:", message.mode);
   } else {
       const latitude = parseFloat(message.latitude);  // Get latitude from the message
       const longitude = parseFloat(message.longitude);  // Get longitude from the message
-      //console.log(Received coordinates: Latitude = ${latitude}, Longitude = ${longitude});
-
       let newPoint = {lat: latitude, lng: longitude};
-      updateParallelLines(newPoint, threshold);
+      if (mode == "record"){
+        record(newPoint, threshold);
+      }
+      if (mode=="play"){
+        pathCoordinates.push(newPoint);
+      }
+
+
+      //console.log(Received coordinates: Latitude = ${latitude}, Longitude = ${longitude});
 
       //add the new coordinates to the path
       //pathCoordinates.push({ lat: latitude, lng: longitude }); //adding the new coordinates to the path
@@ -109,7 +135,7 @@ socket.onclose = function () {   // handle WebSocket closure
 };
 
 
-function updateParallelLines(newPoint, threshold) {
+function record(newPoint, threshold) {
   if (pathCoordinates.length > 0) {
     let lastPoint = pathCoordinates[pathCoordinates.length - 1];
 
@@ -125,8 +151,11 @@ function updateParallelLines(newPoint, threshold) {
     // Add new points to left and right paths (keeping left & right consistently placed)
     leftCoordinates.push({ lat: newPoint.lat + latOffset, lng: newPoint.lng + lngOffset });
     rightCoordinates.push({ lat: newPoint.lat - latOffset, lng: newPoint.lng - lngOffset });
+  }
+
+  // Add new coordinate to path
+  pathCoordinates.push(newPoint);
 }
 
-// Add new coordinate to path
-pathCoordinates.push(newPoint);
-}
+
+

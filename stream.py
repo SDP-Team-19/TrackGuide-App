@@ -27,7 +27,7 @@ latitude = 42.393429 # default coords
 longitude = -72.529197 
 
 first = 1
-test = {"threshold": 0.00001, "mode": "replay"}
+test = {"threshold": 0.00001, "mode": "record"}
 while True:
     #generate fake coordinates
     count += 1
@@ -49,6 +49,23 @@ while True:
             Data=json.dumps(coordinates),
             PartitionKey="partition-1"
         )
+
+    if count == 80:
+        test ={"threshold": 0.00001, "mode": "line_reset"}
+        kinesis_client.put_record(
+            StreamName=STREAM_NAME,
+            Data=json.dumps(test),
+            PartitionKey="partition-1"
+        )
+
+    if count == 80:
+        test ={"threshold": 0.00001, "mode": "play"}
+        kinesis_client.put_record(
+            StreamName=STREAM_NAME,
+            Data=json.dumps(test),
+            PartitionKey="partition-1"
+        )
+        count = 0
 
     Data=json.dumps(coordinates)
     print(Data)
